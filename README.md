@@ -1,7 +1,7 @@
 # SkinScan – AI Skin Condition Screening Website
 
 An integrated end-to-end web application that connects the PyTorch deep learning model (`outputs/best_model.pt`) with a responsive web interface (`index.html`) using a lightweight Flask backend server (`app.py`).
-
+DATASET LINK--> https://doi.org/10.1016/j.dib.2025.112239?utm_source=chatgpt.com
 ---
 
 ## 🚀 Quick Start
