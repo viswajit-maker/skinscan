@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkinScan – AI Skin Condition Screening</title>
+<style>
+  :root{
+    --bg:#f4f7fb;
+    --card:#fff;
+    --ink:#1c2733;
+    --muted:#64748b;
+    --brand:#2563eb;
+    --brand-d:#1d4ed8;
+    --ok:#16a34a;
+    --warn:#d97706;
+    --bad:#dc2626;
+    --line:#e2e8f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);color:#fff;padding:24px 20px;text-align:center;box-shadow:0 2px 8px rgba(37,99,235,0.2)}
+  header h1{margin:0;font-size:1.6rem;letter-spacing:-0.5px}
+  header p{margin:6px 0 0;opacity:.9;font-size:.95rem}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:999px;font-size:0.8rem;margin-top:10px}
+  .status-dot{width:8px;height:8px;background:#4ade80;border-radius:50%}
+  main{max-width:760px;margin:24px auto;padding:0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{flex:1;padding:12px;border:1px solid var(--line);background:#f8fafc;border-radius:10px;cursor:pointer;font-size:.95rem;font-weight:500;transition:all .15s}
+  .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .hidden{display:none!important}
+  .stage{background:#0f172a;border-radius:12px;min-height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .stage video,.stage img{width:100%;max-height:420px;object-fit:contain;display:block}
+  .placeholder{color:#94a3b8;text-align:center;padding:30px;line-height:1.5}
+  .drop{border:2px dashed #94a3b8;border-radius:12px;padding:40px 16px;text-align:center;cursor:pointer;color:var(--muted);background:#f8fafc;transition:background .2s, border-color .2s}
+  .drop.over{border-color:var(--brand);background:#eff6ff}
+  .row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  button.btn{flex:1;min-width:140px;padding:12px 18px;border:0;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;background:var(--brand);color:#fff;transition:background .15s}
+  button.btn:hover{background:var(--brand-d)}
+  button.btn.secondary{background:#e2e8f0;color:var(--ink)}
+  button.btn.secondary:hover{background:#cbd5e1}
+  button.btn:disabled{opacity:.5;cursor:not-allowed}
+  .tips{font-size:.85rem;color:var(--muted);margin:14px 0 0;padding-left:18px;line-height:1.5}
+  .spinner{width:22px;height:22px;border:3px solid #cbd5e1;border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .top{font-size:1.45rem;font-weight:700;margin:0 0 6px}
+  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.85rem;font-weight:600;color:#fff}
+  .info-box{margin:14px 0;padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:0.92rem;line-height:1.5}
+  .info-box p{margin:0 0 6px}
+  .info-box p:last-child{margin-bottom:0}
+  .bar-wrap{margin:14px 0}
+  .bar-label{display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:5px;font-weight:500}
+  .bar{height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden}
+  .bar>span{display:block;height:100%;background:var(--brand);width:0;transition:width .6s ease-out;border-radius:6px}
+  .alert{padding:12px 14px;border-radius:10px;font-size:.9rem;margin-top:14px;line-height:1.45}
+  .alert.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+  .alert.err{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
+  .disclaimer{font-size:.8rem;color:var(--muted);text-align:center;margin:12px 0 32px;line-height:1.4}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔬 SkinScan</h1>
+  <p>Integrated AI-assisted screening for 6 common dermatological conditions</p>
+  <div class="status-pill">
+    <span class="status-dot"></span>
+    <span id="serverStatus">Backend Active & Model Ready</span>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="tabs">
+      <button class="tab active" id="tabCamera">📷 Use camera</button>
+      <button class="tab" id="tabUpload">🖼️ Upload photo</button>
+    </div>
+
+    <!-- Camera -->
+    <div id="cameraPane">
+      <div class="stage">
+        <video id="video" autoplay playsinline muted class="hidden"></video>
+        <div class="placeholder" id="camPlaceholder">Camera is idle.<br>Tap “Start camera” to stream video.</div>
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="startCam">Start camera</button>
+        <button class="btn secondary" id="flipCam" disabled>Switch camera</button>
+        <button class="btn" id="capture" disabled>Capture photo</button>
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div id="uploadPane" class="hidden">
+      <div class="drop" id="drop">
+        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:8px;color:var(--muted)"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+        <br>Click to choose an image, or drag &amp; drop it here
+      </div>
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+    </div>
+
+    <!-- Preview -->
+    <div id="previewPane" class="hidden" style="margin-top:16px">
+      <div class="stage"><img id="preview" alt="Selected skin photo"></div>
+      <div class="row">
+        <button class="btn secondary" id="retake">Retake / choose another</button>
+        <button class="btn" id="analyze">Analyze with AI</button>
+      </div>
+    </div>
+
+    <ul class="tips">
+      <li>Use bright, clear light and keep the camera steady and focused.</li>
+      <li>Fill the frame with the affected lesion or skin area; avoid harsh filters or shadows.</li>
+    </ul>
+    <canvas id="canvas" class="hidden"></canvas>
+  </section>
+
+  <section class="card hidden" id="resultCard">
+    <div id="loading" class="hidden"><span class="spinner"></span>Analyzing photo with EfficientNet-B0…</div>
+    <div id="result" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        <p class="top" id="topLabel" style="margin:0;"></p>
+        <span class="badge" id="topBadge"></span>
+      </div>
+
+      <div id="diseaseInfo" class="info-box hidden">
+        <p id="diseaseDesc" style="color:#166534;font-weight:500;"></p>
+        <p id="diseaseAdvice" style="color:#15803d;font-size:0.86rem;"></p>
+      </div>
+
+      <h3 style="font-size:0.95rem;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Confidence Breakdown</h3>
+      <div id="bars"></div>
+
+      <div class="alert warn hidden" id="lowConf">
+        ⚠️ <strong>Low confidence:</strong> The model is not highly certain about this photo. Please retake the photo in better lighting, closer to the affected area, and in sharp focus.
+      </div>
+    </div>
+    <div class="alert err hidden" id="error"></div>
+  </section>
+
+  <p class="disclaimer">
+    <strong>Medical Disclaimer:</strong> This AI screening tool is for informational and educational support only, and is <strong>not a medical diagnosis</strong>. It analyzes 6 specific conditions (Atopic Dermatitis, Contact Dermatitis, Eczema, Scabies, Seborrheic Dermatitis, Tinea Corporis). Please consult a licensed dermatologist or medical professional for clinical diagnosis and treatment.
+  </p>
+</main>
+
+<script>
+/* ================== SETTINGS ================== */
+// Seamless relative path when served together, or localhost fallback if file opened directly
+const API_URL = window.location.protocol.startsWith("http") 
+  ? "/predict" 
+  : "http://127.0.0.1:5000/predict";
+const LOW_CONFIDENCE = 0.50;
+/* ============================================== */
+
+const $ = id => document.getElementById(id);
+let stream = null, facing = "environment", currentBlob = null;
+
+/* ---------- tabs ---------- */
+function showTab(which){
+  $("tabCamera").classList.toggle("active", which === "camera");
+  $("tabUpload").classList.toggle("active", which === "upload");
+  $("cameraPane").classList.toggle("hidden", which !== "camera");
+  $("uploadPane").classList.toggle("hidden", which !== "upload");
+  if (which !== "camera") stopCamera();
+  resetPreview();
+}
+$("tabCamera").onclick = () => showTab("camera");
+$("tabUpload").onclick = () => showTab("upload");
+
+/* ---------- camera ---------- */
+async function startCamera(){
+  stopCamera();
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false
+    });
+    $("video").srcObject = stream;
+    $("video").classList.remove("hidden");
+    $("camPlaceholder").classList.add("hidden");
+    $("capture").disabled = false; $("flipCam").disabled = false;
+    $("startCam").textContent = "Restart camera";
+  }catch(e){
+    showError("Cannot access camera: " + e.message + ". Please ensure camera permissions are allowed, or use the 'Upload photo' tab.");
+  }
+}
+function stopCamera(){
+  if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $("video").classList.add("hidden"); $("camPlaceholder").classList.remove("hidden");
+  $("capture").disabled = true; $("flipCam").disabled = true;
+}
+$("startCam").onclick = startCamera;
+$("flipCam").onclick = () => { facing = facing === "environment" ? "user" : "environment"; startCamera(); };
+$("capture").onclick = () => {
+  const v = $("video"), c = $("canvas");
+  c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
+  c.getContext("2d").drawImage(v, 0, 0);
+  c.toBlob(b => { setImage(b); stopCamera(); }, "image/jpeg", 0.92);
+};
+
+/* ---------- upload ---------- */
+$("drop").onclick = () => $("fileInput").click();
+$("fileInput").onchange = e => e.target.files[0] && setImage(e.target.files[0]);
+["dragover","dragenter"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", e => {
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith("image/")) setImage(f);
+});
+
+/* ---------- preview ---------- */
+function setImage(blob){
+  currentBlob = blob;
+  $("preview").src = URL.createObjectURL(blob);
+  $("previewPane").classList.remove("hidden");
+  $("cameraPane").classList.add("hidden"); $("uploadPane").classList.add("hidden");
+  hideResult();
+}
+function resetPreview(){
+  currentBlob = null; $("fileInput").value = "";
+  $("previewPane").classList.add("hidden");
+  hideResult();
+}
+$("retake").onclick = () => {
+  const camActive = $("tabCamera").classList.contains("active");
+  resetPreview();
+  $("cameraPane").classList.toggle("hidden", !camActive);
+  $("uploadPane").classList.toggle("hidden", camActive);
+};
+
+/* ---------- analyze ---------- */
+$("analyze").onclick = async () => {
+  if (!currentBlob) return;
+  $("resultCard").classList.remove("hidden");
+  $("loading").classList.remove("hidden"); $("result").classList.add("hidden"); $("error").classList.add("hidden");
+  $("analyze").disabled = true;
+  try{
+    const fd = new FormData();
+    fd.append("file", currentBlob, "skin.jpg");
+    const res = await fetch(API_URL, { method: "POST", body: fd });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || ("Server returned HTTP " + res.status));
+    }
+    const data = await res.json();
+    showResult(data.predictions);
+  }catch(e){
+    showError("Prediction failed: " + e.message + ". Make sure the backend server is running.");
+  }finally{
+    $("loading").classList.add("hidden"); $("analyze").disabled = false;
+  }
+};
+
+function showResult(preds){
+  if (!preds || !preds.length) {
+    showError("No predictions returned from the server.");
+    return;
+  }
+  const top = preds[0], pct = Math.round(top.confidence * 100);
+  $("topLabel").textContent = top.label;
+  const level = top.confidence >= 0.75 ? ["High confidence", "var(--ok)"]
+              : top.confidence >= LOW_CONFIDENCE ? ["Medium confidence", "var(--warn)"]
+              : ["Low confidence", "var(--bad)"];
+  $("topBadge").textContent = level[0] + " · " + pct + "%";
+  $("topBadge").style.background = level[1];
+
+  if (top.description) {
+    $("diseaseDesc").textContent = top.description;
+    $("diseaseAdvice").textContent = "💡 Care guidance: " + top.advice;
+    $("diseaseInfo").classList.remove("hidden");
+  } else {
+    $("diseaseInfo").classList.add("hidden");
+  }
+
+  $("bars").innerHTML = preds.map(p => {
+    const pPct = (p.confidence * 100).toFixed(1);
+    const color = p.confidence >= 0.5 ? "var(--brand)" : "#94a3b8";
+    return `
+      <div class="bar-wrap">
+        <div class="bar-label"><span>${escapeHtml(p.label)}</span><span>${pPct}%</span></div>
+        <div class="bar"><span style="background:${color}" data-w="${pPct}"></span></div>
+      </div>
+    `;
+  }).join("");
+
+  $("lowConf").classList.toggle("hidden", top.confidence >= LOW_CONFIDENCE);
+  $("result").classList.remove("hidden");
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".bar>span").forEach(s => s.style.width = s.dataset.w + "%");
+  });
+  $("resultCard").scrollIntoView({ behavior: "smooth" });
+}
+
+function showError(msg){
+  $("resultCard").classList.remove("hidden");
+  $("error").textContent = msg; $("error").classList.remove("hidden");
+}
+function hideResult(){ $("resultCard").classList.add("hidden"); $("error").classList.add("hidden"); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+</script>
+</body>
+</html>

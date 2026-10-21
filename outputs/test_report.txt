@@ -1,0 +1,12 @@
+                       precision    recall  f1-score   support
+
+    Atopic Dermatitis      0.000     0.000     0.000         6
+   Contact Dermatitis      0.296     0.333     0.314        48
+               Eczema      0.353     0.255     0.296        47
+              Scabies      0.682     0.857     0.759        35
+Seborrheic Dermatitis      0.667     0.286     0.400         7
+       Tinea Corporis      0.640     0.571     0.604        28
+
+             accuracy                          0.444       171
+            macro avg      0.440     0.384     0.396       171
+         weighted avg      0.452     0.444     0.440       171
